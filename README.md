@@ -1,138 +1,27 @@
-JSON in Java [package org.json]
-===============================
+# Fork of [stleary/JSON-java](https://github.com/stleary/JSON-java)
 
-[![Maven Central](https://img.shields.io/maven-central/v/org.json/json.svg)](https://mvnrepository.com/artifact/org.json/json)
+In this fork, I added a constructor for JSONObject allowing the user to choose the Map implementation (instead of the default HashMap).
+By choice of map implementations like LinkedHashMap or some sorted map the user can influence the iteration order and thus especially the order of the toString-methods' output. While this is not important for machine-readable JSON, for a pretty-printed, human-readable JSON created by #toString(int) (probably meant for humans to edit the data), a custom order may increase readability and maintainability of the generated code.
 
-**[Click here if you just want the latest release jar file.](http://central.maven.org/maven2/org/json/json/20180813/json-20180813.jar)**
+Since support for ordering `JSONObject`'s properties [is not intended in the original project](https://github.com/stleary/JSON-java/wiki/FAQ#why-isnt-ordering-allowed-in-jsonobjects) and this change is therefore not accepted as pull request, I was encouraged to maintain an own fork. 
 
-JSON is a light-weight, language independent, data interchange format.
-See http://www.JSON.org/
+The reason, as mentioned in the [FAQ](https://github.com/stleary/JSON-java/wiki/FAQ#why-isnt-ordering-allowed-in-jsonobjects), is that the JSON spec defines an object to be an unordered collection. While I agree that this means that no JSON consumer must rely on any ordering of an object's properties, any JSON markup necessarily enumerates this unordered collection sequentially. The output always defines the same JSON object regardless of the order of this sequence. That means, anyone writing JSON markup may do so in any order he likes, only the reader must not expect a specific order. That said, using this implementation to customise the order of the properties for certain JSON objects when serialising them does not conflict with the JSON specs.
 
-The files in this package implement JSON encoders/decoders in Java.
-It also includes the capability to convert between JSON and XML, HTTP
-headers, Cookies, and CDL.
+## Background
 
-This is a reference implementation. There is a large number of JSON packages
-in Java. Perhaps someday the Java community will standardize on one. Until
-then, choose carefully.
+I needed to create JSON files which should be easily readable and editable by humans. The JSON should meet two criteria:
 
-The license includes this restriction: "The software shall be used for good,
-not evil." If your conscience cannot live with that, then choose a different
-package.
+It should be pretty-printed, and
+the properties of certain JSON objects should be printed in a certain order.
+While the JSONStringer outputs all properties in the order of the .key().value()-calls, it does not support pretty printing. The alternative is to create JSONObjects with the default constructor, add properties by its put() methods and then call the toString(int) method, which performs pretty-printing – but the default HashMap container of JSONObject does not support outputting the properties in insertion order (order of the put() calls).
 
-The package compiles on Java 1.6-1.8.
+That's why I added a possibility to create a new, empty JSONObject with a new constructor allowing to select a different Map implementation, like a SortedMap oder a LinkedMap (the latter preserving insertion order, which is precisely what I needed).
 
+Instead of passing a newly created map as parameter I decided to use a supplier argument in order to reduce the risk that the caller passes a non-empty map or retains a reference to the created map, enabling him to manipulate it other than by the JSONObject's methods. Also, a new constructor with a Map argument would have clashed with the existing one taking a map and putting all it's content into a new internal HashMap.
 
-**JSONObject.java**: The `JSONObject` can parse text from a `String` or a `JSONTokener`
-to produce a map-like object. The object provides methods for manipulating its
-contents, and for producing a JSON compliant object serialization.
+Normally I'd have used java.util.function.Supplier<Map<String, Object>> as argument type, but since that would have meant to drop support for Java 1.6 and 1.7, I instead introduced a new (functional) interface.
 
-**JSONArray.java**: The `JSONArray` can parse text from a String or a `JSONTokener`
-to produce a vector-like object. The object provides methods for manipulating
-its contents, and for producing a JSON compliant array serialization.
+## Note on maintenance
 
-**JSONTokener.java**: The `JSONTokener` breaks a text into a sequence of individual
-tokens. It can be constructed from a `String`, `Reader`, or `InputStream`.
+Newer versions of the [original project](https://github.com/stleary/JSON-java) will probably be merged into this fork from time to time, but not regularly.
 
-**JSONException.java**: The `JSONException` is the standard exception type thrown
-by this package.
-
-**JSONPointer.java**: Implementation of
-[JSON Pointer (RFC 6901)](https://tools.ietf.org/html/rfc6901). Supports
-JSON Pointers both in the form of string representation and URI fragment
-representation.
-
-**JSONPropertyIgnore.java**: Annotation class that can be used on Java Bean getter methods.
-When used on a bean method that would normally be serialized into a `JSONObject`, it
-overrides the getter-to-key-name logic and forces the property to be excluded from the
-resulting `JSONObject`.
-
-**JSONPropertyName.java**: Annotation class that can be used on Java Bean getter methods.
-When used on a bean method that would normally be serialized into a `JSONObject`, it
-overrides the getter-to-key-name logic and uses the value of the annotation. The Bean
-processor will look through the class hierarchy. This means you can use the annotation on
-a base class or interface and the value of the annotation will be used even if the getter
-is overridden in a child class.   
-
-**JSONString.java**: The `JSONString` interface requires a `toJSONString` method,
-allowing an object to provide its own serialization.
-
-**JSONStringer.java**: The `JSONStringer` provides a convenient facility for
-building JSON strings.
-
-**JSONWriter.java**: The `JSONWriter` provides a convenient facility for building
-JSON text through a writer.
-
-
-**CDL.java**: `CDL` provides support for converting between JSON and comma
-delimited lists.
-
-**Cookie.java**: `Cookie` provides support for converting between JSON and cookies.
-
-**CookieList.java**: `CookieList` provides support for converting between JSON and
-cookie lists.
-
-**HTTP.java**: `HTTP` provides support for converting between JSON and HTTP headers.
-
-**HTTPTokener.java**: `HTTPTokener` extends `JSONTokener` for parsing HTTP headers.
-
-**XML.java**: `XML` provides support for converting between JSON and XML.
-
-**JSONML.java**: `JSONML` provides support for converting between JSONML and XML.
-
-**XMLTokener.java**: `XMLTokener` extends `JSONTokener` for parsing XML text.
-
-Unit tests are maintained in a separate project. Contributing developers can test
-JSON-java pull requests with the code in this project:
-https://github.com/stleary/JSON-Java-unit-test
-
-Numeric types in this package comply with
-[ECMA-404: The JSON Data Interchange Format](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf) and
-[RFC 8259: The JavaScript Object Notation (JSON) Data Interchange Format](https://tools.ietf.org/html/rfc8259#section-6).
-This package fully supports `Integer`, `Long`, and `Double` Java types. Partial support
-for `BigInteger` and `BigDecimal` values in `JSONObject` and `JSONArray` objects is provided
-in the form of `get()`, `opt()`, and `put()` API methods.
-
-Although 1.6 compatibility is currently supported, it is not a project goal and may be
-removed in some future release.
-
-In compliance with RFC8259 page 10 section 9, the parser is more lax with what is valid
-JSON than the Generator. For Example, the tab character (U+0009) is allowed when reading
-JSON Text strings, but when output by the Generator, tab is properly converted to \t in
-the string. Other instances may occur where reading invalid JSON text does not cause an
-error to be generated. Malformed JSON Texts such as missing end " (quote) on strings or
-invalid number formats (1.2e6.3) will cause errors as such documents can not be read
- reliably.
-
-Release history:
-
-~~~
-20180813    POM change to include Automatic-Module-Name (#431)
-
-20180130    Recent commits
-
-20171018    Checkpoint for recent commits.
-
-20170516    Roll up recent commits.
-
-20160810    Revert code that was breaking opt*() methods.
-
-20160807    This release contains a bug in the JSONObject.opt*() and JSONArray.opt*() methods,
-it is not recommended for use.
-Java 1.6 compatability fixed, JSONArray.toList() and JSONObject.toMap(),
-RFC4180 compatibility, JSONPointer, some exception fixes, optional XML type conversion.
-Contains the latest code as of 7 Aug, 2016
-
-20160212    Java 1.6 compatibility, OSGi bundle. Contains the latest code as of 12 Feb, 2016.
-
-20151123    JSONObject and JSONArray initialization with generics. Contains the
-latest code as of 23 Nov, 2015.
-
-20150729    Checkpoint for Maven central repository release. Contains the latest code
-as of 29 July, 2015.
-~~~
-
-
-JSON-java releases can be found by searching the Maven repository for groupId "org.json"
-and artifactId "json". For example:
-https://search.maven.org/search?q=g:org.json%20AND%20a:json&core=gav

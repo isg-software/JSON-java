@@ -97,7 +97,7 @@ import java.util.regex.Pattern;
  * or <code>null</code>.</li>
  * </ul>
  *
- * @author JSON.org
+ * @author JSON.org, modified by Immo Schulz-Gerlach
  * @version 2019-07-01
  */
 public class JSONObject {
